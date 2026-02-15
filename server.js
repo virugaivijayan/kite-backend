@@ -11,7 +11,6 @@ app.get("/", (req, res) => {
   res.send("Kite Backend Running Successfully 🚀");
 });
 
-/* Zerodha redirect வரும் இடம் */
 app.get("/callback", async (req, res) => {
   try {
     const request_token = req.query.request_token;
@@ -42,11 +41,7 @@ app.get("/callback", async (req, res) => {
 
     const access_token = response.data.data.access_token;
 
-    res.send(`
-      <h2>Access Token Generated Successfully ✅</h2>
-      <h3>${access_token}</h3>
-    `);
-
+    res.send(`<h2>Access Token Generated Successfully ✅</h2><h3>${access_token}</h3>`);
   } catch (err) {
     res.send("Token generation failed: " + err.message);
   }
