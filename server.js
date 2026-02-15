@@ -1,39 +1,88 @@
-import express from "express";
-import crypto from "crypto";
-import fetch from "node-fetch";
-import cors from "cors";
+// ====== BASIC BACKEND FOR RAILWAY + ZERODHA ======
+
+const express = require("express");
+const crypto = require("crypto");
+const fetch = require("node-fetch");
+require("dotenv").config();
 
 const app = express();
-app.use(cors());
+app.use(express.json());
 
-const API_KEY = process.env.API_KEY;
-const API_SECRET = process.env.API_SECRET;
 
-app.get("/", (req,res)=>{
-    res.send("Kite Backend Running");
+// --------------------------------------------------
+// 1) HEALTH CHECK (Railway 502 error avoid)
+// --------------------------------------------------
+app.get("/", (req, res) => {
+  res.send("Kite Backend Running Successfully 🚀");
 });
 
-app.get("/login", (req,res)=>{
-    const url = `https://kite.zerodha.com/connect/login?v=3&api_key=${API_KEY}`;
-    res.redirect(url);
+
+// --------------------------------------------------
+// 2) LOGIN URL GENERATOR
+// Open this in browser -> Zerodha login page open
+// --------------------------------------------------
+app.get("/login", (req, res) => {
+
+  const apiKey = process.env.API_KEY;
+
+  const url = `https://kite.zerodha.com/connect/login?v=3&api_key=${apiKey}`;
+
+  res.json({
+    login_url: url
+  });
 });
 
-app.get("/callback", async (req,res)=>{
+
+// --------------------------------------------------
+// 3) ACCESS TOKEN GENERATE
+// Zerodha redirect → request_token கொண்டு இங்கு வருவோம்
+// --------------------------------------------------
+app.get("/generate-session", async (req, res) => {
+
+  try {
+
     const request_token = req.query.request_token;
 
-    const checksum = crypto
-        .createHash("sha256")
-        .update(API_KEY + request_token + API_SECRET)
-        .digest("hex");
+    if (!request_token) {
+      return res.send("Missing request_token");
+    }
 
-    const response = await fetch("https://api.kite.trade/session/token",{
-        method:"POST",
-        headers:{ "Content-Type":"application/x-www-form-urlencoded" },
-        body:`api_key=${API_KEY}&request_token=${request_token}&checksum=${checksum}`
+    const apiKey = process.env.API_KEY;
+    const apiSecret = process.env.API_SECRET;
+
+    const checksum = crypto
+      .createHash("sha256")
+      .update(apiKey + request_token + apiSecret)
+      .digest("hex");
+
+    const response = await fetch("https://api.kite.trade/session/token", {
+      method: "POST",
+      headers: {
+        "X-Kite-Version": "3",
+        "Content-Type": "application/x-www-form-urlencoded"
+      },
+      body: new URLSearchParams({
+        api_key: apiKey,
+        request_token: request_token,
+        checksum: checksum
+      })
     });
 
     const data = await response.json();
+
     res.json(data);
+
+  } catch (err) {
+    res.send(err.toString());
+  }
 });
 
-app.listen(3000, ()=>console.log("running"));
+
+// --------------------------------------------------
+// SERVER START (Railway Compatible)
+// --------------------------------------------------
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, "0.0.0.0", () => {
+  console.log("Server running on port " + PORT);
+});
