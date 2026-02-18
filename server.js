@@ -20,18 +20,16 @@ app.get("/callback", async (req, res) => {
   try {
     const request_token = req.query.request_token;
 
-    console.log("REQUEST TOKEN:", request_token);
-
     if (!request_token) {
       return res.send("No request_token received.");
     }
+
+    console.log("NEW REQUEST TOKEN:", request_token);
 
     const checksum = crypto
       .createHash("sha256")
       .update(API_KEY + request_token + API_SECRET)
       .digest("hex");
-
-    console.log("CHECKSUM:", checksum);
 
     const response = await axios.post(
       "https://api.kite.trade/session/token",
@@ -47,6 +45,18 @@ app.get("/callback", async (req, res) => {
         },
       }
     );
+
+    ACCESS_TOKEN = response.data.data.access_token;
+
+    console.log("ACCESS TOKEN CREATED");
+
+    res.send("Access token generated successfully!");
+  } catch (err) {
+    console.log("FULL ERROR:", err.response?.data);
+    res.send("Token expired. Please login again.");
+  }
+});
+
 
     ACCESS_TOKEN = response.data.data.access_token;
 
