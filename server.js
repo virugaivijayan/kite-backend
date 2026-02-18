@@ -11,11 +11,13 @@ const API_SECRET = process.env.API_SECRET;
 
 let ACCESS_TOKEN = null;
 
+/* STEP 1 — Login Route */
 app.get("/", (req, res) => {
-  const loginUrl = `https://kite.zerodha.com/connect/login?api_key=${API_KEY}&v=3`;
-  res.send(`<a href="${loginUrl}">Login to Zerodha</a>`);
+  const loginUrl = `https://kite.zerodha.com/connect/login?v=3&api_key=${API_KEY}`;
+  res.send(`<h2><a href="${loginUrl}">Login to Zerodha</a></h2>`);
 });
 
+/* STEP 2 — Callback Route */
 app.get("/callback", async (req, res) => {
   try {
     const request_token = req.query.request_token;
@@ -52,24 +54,35 @@ app.get("/callback", async (req, res) => {
 
     res.send("Access token generated successfully!");
   } catch (err) {
-    console.log("FULL ERROR:", err.response?.data);
-    res.send("Token expired. Please login again.");
+    console.log("FULL ERROR:", err.response?.data || err.message);
+    res.send("Token expired or invalid. Please login again.");
   }
 });
 
+/* STEP 3 — Test LTP Route */
+app.get("/ltp", async (req, res) => {
+  try {
+    if (!ACCESS_TOKEN) {
+      return res.send("No access token. Please login first.");
+    }
 
-    ACCESS_TOKEN = response.data.data.access_token;
+    const response = await axios.get(
+      "https://api.kite.trade/quote/ltp?i=NSE:RELIANCE",
+      {
+        headers: {
+          Authorization: `token ${API_KEY}:${ACCESS_TOKEN}`,
+          "X-Kite-Version": "3",
+        },
+      }
+    );
 
-    console.log("ACCESS TOKEN:", ACCESS_TOKEN);
-
-    res.send("Access token generated successfully!");
+    res.json(response.data);
   } catch (err) {
-    console.log("FULL ERROR RESPONSE:");
-    console.log(err.response?.data || err.message);
-    res.send("Error generating access token. Check Railway logs.");
+    console.log("LTP ERROR:", err.response?.data || err.message);
+    res.send("Session expired. Login again.");
   }
 });
 
 app.listen(PORT, () => {
-  console.log("Server running...");
+  console.log("Server running on port " + PORT);
 });
