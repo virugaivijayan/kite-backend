@@ -9,15 +9,16 @@ const PORT = process.env.PORT || 3000;
 const API_KEY = process.env.API_KEY;
 const API_SECRET = process.env.API_SECRET;
 
-let ACCESS_TOKEN = null;
+// Use ENV token if exists
+let ACCESS_TOKEN = process.env.ACCESS_TOKEN || null;
 
-/* STEP 1 — Login Route */
+/* STEP 1 — Login */
 app.get("/", (req, res) => {
   const loginUrl = `https://kite.zerodha.com/connect/login?v=3&api_key=${API_KEY}`;
   res.send(`<h2><a href="${loginUrl}">Login to Zerodha</a></h2>`);
 });
 
-/* STEP 2 — Callback Route */
+/* STEP 2 — Callback */
 app.get("/callback", async (req, res) => {
   try {
     const request_token = req.query.request_token;
@@ -25,8 +26,6 @@ app.get("/callback", async (req, res) => {
     if (!request_token) {
       return res.send("No request_token received.");
     }
-
-    console.log("NEW REQUEST TOKEN:", request_token);
 
     const checksum = crypto
       .createHash("sha256")
@@ -50,20 +49,24 @@ app.get("/callback", async (req, res) => {
 
     ACCESS_TOKEN = response.data.data.access_token;
 
-    console.log("ACCESS TOKEN CREATED");
+    console.log("NEW ACCESS TOKEN:", ACCESS_TOKEN);
 
-    res.send("Access token generated successfully!");
+    res.send(`
+      <h2>Access token generated successfully!</h2>
+      <p>Copy this token and paste in Railway ENV as ACCESS_TOKEN</p>
+      <textarea rows="3" cols="60">${ACCESS_TOKEN}</textarea>
+    `);
   } catch (err) {
-    console.log("FULL ERROR:", err.response?.data || err.message);
-    res.send("Token expired or invalid. Please login again.");
+    console.log("TOKEN ERROR:", err.response?.data || err.message);
+    res.send("Token expired or invalid. Login again.");
   }
 });
 
-/* STEP 3 — Test LTP Route */
+/* STEP 3 — LTP */
 app.get("/ltp", async (req, res) => {
   try {
     if (!ACCESS_TOKEN) {
-      return res.send("No access token. Please login first.");
+      return res.send("No access token found. Login first.");
     }
 
     const response = await axios.get(
@@ -79,7 +82,7 @@ app.get("/ltp", async (req, res) => {
     res.json(response.data);
   } catch (err) {
     console.log("LTP ERROR:", err.response?.data || err.message);
-    res.send("Session expired. Login again.");
+    res.send("Session expired. Generate new token.");
   }
 });
 
